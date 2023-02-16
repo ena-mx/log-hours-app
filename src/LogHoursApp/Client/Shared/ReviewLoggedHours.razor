@@ -1,0 +1,70 @@
+﻿@page "/review-logged-hours"
+@using LogHoursApp.Shared;
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+
+
+@attribute [Authorize(Roles = "manager")]
+
+@inject HttpClient Http
+
+<PageTitle>Review Logged Hours</PageTitle>
+<h1>Review Logged Hours</h1>
+
+@if (LoggedHoursInReview == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Date</th>
+                <th>Hours</th>
+                <th>Description</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var loggedHour in LoggedHoursInReview)
+            {
+                <tr>
+                    <td>@loggedHour.UserName</td>
+                    <td>@loggedHour.Date.ToShortDateString()</td>
+                    <td>@loggedHour.Hours</td>
+                    <td>@loggedHour.Description</td>
+                    <td><Button class="btn btn-primary" @onclick="(_ => MarkAsReviewed(loggedHour.Id))">Mark As Reviewd</Button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<LoggedHourInReview> LoggedHoursInReview = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetLoggedHours();
+    }
+
+    private async Task GetLoggedHours()
+    {
+        try
+        {
+            var loggedHours = await Http.GetFromJsonAsync<List<LoggedHour>>("api/logged-hours") ?? new List<LoggedHour>();
+            LoggedHoursInReview = await Http.GetFromJsonAsync<List<LoggedHourInReview>>("api/logged-hours/in-review") ?? new List<LoggedHourInReview>();
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+        }
+    }
+
+    private async Task MarkAsReviewed(int id)
+    {
+        await Http.PostAsJsonAsync("api/logged-hours/in-review", new MarkAsReviewed() { Id = id });
+        await GetLoggedHours();
+    }
+}

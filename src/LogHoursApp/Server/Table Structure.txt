@@ -1,0 +1,24 @@
+﻿/****** Object:  Table [dbo].[LoggedHours]    Script Date: 2/15/2023 3:12:32 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[LoggedHours](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[UserId] [nvarchar](200) NOT NULL,
+	[UserName] [nvarchar](max) NOT NULL,
+	[Description] [nvarchar](100) NOT NULL,
+	[Hours] [int] NOT NULL,
+	[Date] [smalldatetime] NOT NULL,
+	[Approved] [bit] NOT NULL,
+ CONSTRAINT [PK_LoggedHours] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[LoggedHours] ADD  CONSTRAINT [DF_LoggedHours_Approved]  DEFAULT ((0)) FOR [Approved]
+GO

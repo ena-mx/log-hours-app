@@ -1,0 +1,135 @@
+﻿@page "/logged-hours-report"
+@using LogHoursApp.Shared;
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+@using System.Text.Json;
+
+@attribute [Authorize(Roles = "manager")]
+
+@inject HttpClient Http
+
+<PageTitle>Logged Hours Report</PageTitle>
+<h1>Logged Hours Report</h1>
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <EditForm Model="@Filters" OnValidSubmit="HandleSubmit" class="row g-3">
+        <DataAnnotationsValidator />
+        <div class="col-auto">
+            <label for="selectedWorker">Worker</label>
+            <InputSelect id="selectedWorker" class="form-control" @bind-Value="@Filters.WorkerId">
+                <option value="">Select Worker</option>
+                @foreach (var item in AllWorkers)
+                {
+                    <option value="@item.UserId">@item.UserName</option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="col-auto">
+            <label for="filterType">Filter Type</label>
+            <InputSelect id="filterType" class="form-control" @bind-Value="@Filters.FilterType">
+                <option value="1">Day</option>
+                <option value="2">Week</option>
+                <option value="3">Month</option>
+            </InputSelect>
+        </div>
+        <div class="col-auto">
+            <label for="date">Date</label>
+            <InputDate id="date" class="form-control" @bind-Value="@Filters.DateFilter"></InputDate>
+        </div>
+
+        <div class="col-auto" style="display: flex; flex-direction: column-reverse;">
+            <button type="submit" class="btn btn-primary mb-3" style="margin-bottom: 0 !important;">
+                Submit
+            </button>
+        </div>
+    </EditForm>
+}
+
+@if (LoggedHours != null && LoggedHours.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Date</th>
+                <th>Hours</th>
+                <th>Description</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var loggedHour in LoggedHours)
+            {
+                <tr>
+                    <td>@loggedHour.UserName</td>
+                    <td>@loggedHour.Date.ToShortDateString()</td>
+                    <td>@loggedHour.Hours</td>
+                    <td>@loggedHour.Description</td>
+                    <td>
+                        @if (loggedHour.Approved)
+                        {
+                            <span class="oi oi-check" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <span class="oi oi-loop-circular" aria-hidden="true"></span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if(LoggedHours != null && !LoggedHours.Any())
+{
+    <p>Data not found</p>
+}
+
+@code {
+    private bool loading = true;
+    private GetLoggedHoursReport Filters = new GetLoggedHoursReport()
+        {
+            FilterType = 1,
+            WorkerId = ""
+        };
+    private List<LoggedHourRecord> LoggedHours = null;
+    private List<Worker> AllWorkers = new List<Worker>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AllWorkers = await Http.GetFromJsonAsync<List<Worker>>("api/logged-hours/workers") ?? new List<Worker>();
+
+        if (AllWorkers != null && AllWorkers.Any())
+        {
+            Filters.WorkerId = AllWorkers.First().UserId;
+        }
+        loading = false;
+    }
+
+    private async Task GetLoggedHours()
+    {
+        try
+        {
+            var httpResult = await Http.PostAsJsonAsync<GetLoggedHoursReport>("api/logged-hours/report", Filters);
+            var contentString = await httpResult.Content.ReadAsStringAsync();
+            LoggedHours = JsonSerializer.Deserialize<List<LoggedHourRecord>>(contentString, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new List<LoggedHourRecord>();
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        await GetLoggedHours();
+    }
+}
